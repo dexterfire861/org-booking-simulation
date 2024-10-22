@@ -5,10 +5,7 @@ import random
 TIMESLOT_APPEAL = {
     'morning': 0.3,
     'afternoon': 0.5,
-    'evening': 0.8,
-    'weekend_morning': 0.4,
-    'weekend_afternoon': 0.6,
-    'weekend_evening': 0.9
+    'evening': 0.8
 }
 
 class Organization:
@@ -54,9 +51,9 @@ class Organization:
             # Book the venue
             success = venue.book(current_day, timeslot, self)
             if success:
-                event = event.Event(self, venue, current_day, timeslot)
-                self.events.append(event)
-                events_booked.append(event)
+                evnt = event.Event(self, venue, current_day, timeslot)
+                self.events.append(evnt)
+                events_booked.append(evnt)
                 self.budget -= venue.price
                 self.planned_events += 1
                 if strategy == 'overbook':
@@ -72,12 +69,12 @@ class Organization:
 
     def evaluate_events(self, cancellation_rate):
         remaining_events = []
-        for event in self.events:
+        for evnt in self.events:
             if random.random() < cancellation_rate or self.reputation < 50:
                 # Cancel the event
-                event.venue.cancel_booking(event.day, event.timeslot)
+                evnt.venue.cancel_booking(evnt.day, evnt.timeslot)
             else:
-                remaining_events.append(event)
+                remaining_events.append(evnt)
         self.events = remaining_events
 
     def update_reputation(self, utilization):

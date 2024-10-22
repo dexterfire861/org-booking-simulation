@@ -1,5 +1,5 @@
 import argparse
-import simulation
+import sim
 
 
 def parse_arguments():
@@ -13,11 +13,11 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    simulation = simulation.Simulation(
+    sim = sim.Simulation(
         num_rounds=args.num_rounds,
         round_length=args.round_length,
         cancellation_rate=args.cancellation_rate,
         num_organizations=args.num_organizations,
         num_venues=args.num_venues
     )
-    simulation.run_simulation()
+    sim.run_simulation()

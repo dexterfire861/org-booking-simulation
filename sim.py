@@ -1,7 +1,7 @@
 import random
-import venue
-import administration
-import organization
+import ven
+import admin
+import club
 from datetime import datetime, timedelta
 
 class Simulation:
@@ -13,7 +13,7 @@ class Simulation:
         self.num_venues = num_venues
         self.organizations = []
         self.venues = []
-        self.administration = administration.Administration()
+        self.administration = admin.Administration()
         self.current_day = 0
         self.initialize_entities()
 
@@ -23,14 +23,14 @@ class Simulation:
             name = f"Venue_{i}"
             size = random.randint(50, 200)
             price = random.randint(100, 500)
-            venue = venue.Venue(name, size, price)
+            venue = ven.Venue(name, size, price)
             self.venues.append(venue)
         # Initialize Organizations
         for i in range(1, self.num_organizations + 1):
             name = f"Organization_{i}"
             size = random.randint(20, 100)
-            org = organization.Organization(name, size)
-            self.organizations.append(org)
+            newOrg = club.Organization(name, size)
+            self.organizations.append(newOrg)
 
     def run_simulation(self):
         for round_num in range(1, self.num_rounds + 1):
@@ -73,7 +73,7 @@ class Simulation:
         self.simulation_summary()
 
     def calculate_attendance(self, org, venue, timeslot):
-        appeal = organization.TIMESLOT_APPEAL.get(timeslot, 0.5)
+        appeal = club.TIMESLOT_APPEAL.get(timeslot, 0.5)
         base_attendance = int(org.size * 0.1 * appeal)
         # Limit attendance to venue size
         attendance = min(base_attendance, venue.size)

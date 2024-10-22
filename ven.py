@@ -1,4 +1,5 @@
 from collections import defaultdict
+from club import TIMESLOT_APPEAL
 
 class Venue:
     def __init__(self, name, size, price):
