@@ -1,20 +1,23 @@
 import argparse
-from simulation import Simulation
+import simulation
 
-def main():
-    parser = argparse.ArgumentParser(description="Run the organization booking simulation.")
-    parser.add_argument('--num_orgs', type=int, default=10, help='Number of organizations')
-    parser.add_argument('--num_venues', type=int, default=20, help='Number of venues')
-    parser.add_argument('--num_periods', type=int, default=10, help='Number of periods')
-    parser.add_argument('--cancellation_rate', type=float, default=0.3, help='Cancellation rate')
 
-    args = parser.parse_args()
-
-    sim = Simulation(num_orgs=args.num_orgs, num_venues=args.num_venues, num_periods=args.num_periods, cancellation_rate=args.cancellation_rate)
-    sim.run()
-    sim.print_results()
-
-    sim.plot_results()
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Simulation of Student Organizations Booking Venues")
+    parser.add_argument('--num_rounds', type=int, default=5, help='Number of rounds in the simulation')
+    parser.add_argument('--round_length', type=int, default=7, help='Number of days per round')
+    parser.add_argument('--cancellation_rate', type=float, default=0.1, help='Rate at which events get canceled')
+    parser.add_argument('--num_organizations', type=int, default=3, help='Number of student organizations')
+    parser.add_argument('--num_venues', type=int, default=5, help='Number of venues available')
+    return parser.parse_args()
 
 if __name__ == "__main__":
-    main()
+    args = parse_arguments()
+    simulation = simulation.Simulation(
+        num_rounds=args.num_rounds,
+        round_length=args.round_length,
+        cancellation_rate=args.cancellation_rate,
+        num_organizations=args.num_organizations,
+        num_venues=args.num_venues
+    )
+    simulation.run_simulation()

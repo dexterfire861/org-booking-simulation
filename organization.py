@@ -1,56 +1,94 @@
+import event
 import random
 
-#Class instance for the organization with a score, reputation, and strategy
+
+TIMESLOT_APPEAL = {
+    'morning': 0.3,
+    'afternoon': 0.5,
+    'evening': 0.8,
+    'weekend_morning': 0.4,
+    'weekend_afternoon': 0.6,
+    'weekend_evening': 0.9
+}
+
 class Organization:
     def __init__(self, name, size):
         self.name = name
-        #size of the organization
         self.size = size
-        #value used each round to determine if the organization is doing well or not
+        self.reputation = 100  # Starts at 100
         self.score = 0
-        #reputation of the organization that they must maintain if they want to continue booking venues
-        self.reputation = 100
-        #which strategy the organization uses to book venues
-        self.strategy = random.choice(["overbook", "normal"])
-        #budget that the organization has to spend on booking venues
-        self.budget = 20
-        # as organizations overbook and are penalized, the penalty cost will increase
-        self.penalty_cost = 1
+        self.planned_events = 0
+        self.budget = self.calculate_initial_budget()
+        self.events = []
+        self.performance_history = []
 
-    def book_venue(self, venues, date):
-        
-        if self.strategy == "overbook" and self.budget > 10:
-            venues_to_book = random.sample(venues, min(self.size+1, len(venues)))
-            self.budget -= self.penalty_cost * len(venues_to_book)*2
-        elif self.strategy == "normal" and self.budget > 5:
-            venues_to_book = [random.choice(venues)]
-            self.budget -= self.penalty_cost * len(venues_to_book)
+    def calculate_initial_budget(self):
+        # Example: Budget = size * 10 + reputation * 2
+        return self.size * 10 + self.reputation * 2
+
+    def gain_budget(self):
+        # Example: Gain budget based on reputation and size
+        self.budget += self.size * 5 + self.reputation
+
+    def decide_strategy(self):
+        # Decide to cooperate or overbook based on reputation and performance
+        if self.reputation >= 70 and self.score >= 50:
+            return 'cooperate'
+        elif self.reputation < 50 and self.score >= 50:
+            return 'overbook'
+        elif self.reputation >= 70 and self.score < 50:
+            return 'cooperate'
         else:
-            venues_to_book = [random.choice(venues)]
-        return venues_to_book
+            return 'overbook'
 
-    def update_strategy(self, avg_score):
+    def book_events(self, available_venues, current_day, two_weeks_ahead):
+        strategy = self.decide_strategy()
+        events_booked = []
+        for venue in available_venues:
+            if self.budget < venue.price:
+                continue  # Not enough budget
+            # Choose a timeslot based on appeal
+            timeslot = self.choose_timeslot(venue)
+            if not venue.is_available(current_day, timeslot):
+                continue  # Timeslot not available
+            # Book the venue
+            success = venue.book(current_day, timeslot, self)
+            if success:
+                event = event.Event(self, venue, current_day, timeslot)
+                self.events.append(event)
+                events_booked.append(event)
+                self.budget -= venue.price
+                self.planned_events += 1
+                if strategy == 'overbook':
+                    # Optionally book more venues
+                    continue
+        return events_booked
 
-        #Rudimentary logic for switching strategies, need to take into account more values and 
-        #experiment with budget, penalty cost, and other factors to see how it impacts the simulation
-        if self.score < avg_score and self.reputation < 60:
-            self.strategy = "normal"
-        elif self.score > avg_score and self.reputation > 60:
-            self.strategy = "overbook"
+    def choose_timeslot(self, venue):
+        # Prefer higher appeal timeslots
+        times = list(TIMESLOT_APPEAL.keys())
+        weights = [TIMESLOT_APPEAL[ts] for ts in times]
+        return random.choices(times, weights=weights, k=1)[0]
+
+    def evaluate_events(self, cancellation_rate):
+        remaining_events = []
+        for event in self.events:
+            if random.random() < cancellation_rate or self.reputation < 50:
+                # Cancel the event
+                event.venue.cancel_booking(event.day, event.timeslot)
+            else:
+                remaining_events.append(event)
+        self.events = remaining_events
+
+    def update_reputation(self, utilization):
+        if utilization >= 0.8:
+            self.reputation += 2
+        elif utilization < 0.5:
+            self.reputation -= 3
         else:
-            self.strategy = random.choice(["overbook", "normal"])
-    
-    def update_reputation(self, avg_score):
-        #Same thing for updating reputation, need to take into account more values and 
-        #see how it impacts the simulation
-        if self.score > avg_score:
-            self.reputation += 20
-        else:
-            self.reputation -= 20
+            self.reputation += 0  # No change
 
-    #Need to add a function that will update the penality based on the number of venues booked and the score of the organization
-
-    def update_penalty(self, avg_score):
-        pass
-
-
+    def calculate_score(self):
+        # Example scoring: students + reputation + events handled
+        self.score = self.size + self.reputation + self.planned_events
+        self.performance_history.append(self.score)
