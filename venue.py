@@ -1,23 +1,40 @@
 class Venue:
-    def __init__(self, name, popularity_level):
+    def __init__(self, name, popularity_level, time_slots):
         self.name = name
-        self.booked_by = None
-        self.date = None
         self.popularity_level = popularity_level
+        self.time_slots = {slot: None for slot in (time_slots)}
     
-    def is_available(self):
-        return self.booked_by is None
+    def is_available(self, slot):
+        if self.time_slots[slot] is None:
+            return True
+        else:
+            return False
+         
     
-    def book(self, organization):
-        self.booked_by = organization
-        self.date = organization.date
+    def book(self, organization, slot):
+        if self.is_available(slot):
+            self.time_slots[slot] = organization
+            return True
+        else:
+            print("Venue is already booked for this time slot")
+            return False
 
-    def cancel_booking(self):
-        self.booked_by = None
-        self.date = None
+    def cancel_booking(self, slot):
+        if slot in self.time_slots:
+            self.time_slots[slot] = None
+            return True
+        else:
+            print("Venue is not booked for this time slot")
+            return False
     
-    #Try to add in some sort of scheduling logic so that organizations
-    #can book venues by date and time as well and create more of a calendar to choose from
-
+    def get_available_time_slots(self):
+        list_of_available_slots = []
+        for slot, org in self.time_slots.items():
+            if org is None:
+                list_of_available_slots.append(slot)
+            
+        
+        return list_of_available_slots
     
-
+    def reset_venue_bookings(self):
+        self.time_slots = {slot: None for slot in self.time_slots}

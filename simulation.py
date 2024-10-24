@@ -1,14 +1,17 @@
-import random
 from organization import Organization
 from venue import Venue
+import random
 import time
 import matplotlib.pyplot as plt
 
 class Simulation:
     def __init__(self, num_orgs, num_venues, num_periods, cancellation_rate):
+        #hardcoded time slots for the simulation
+        self.time_slots = [hour for hour in range(8, 24)]
+
         #create organizations and venues as per the instantiation parameters. 
-        self.organizations = [Organization(f"Organization {i}", random.randint(10, 50)) for i in range(num_orgs)]
-        self.venues = [Venue(f"Venue {i}", random.randint(1, num_venues)) for i in range(num_venues)]
+        self.organizations = [Organization(f"Organization {i}", random.randint(1,5), []) for i in range(num_orgs)]
+        self.venues = [Venue(f"Venue {i}", random.randint(1, 5), self.time_slots) for i in range(num_venues)]
 
         #the number of periods/times to run the simulation for
         self.num_periods = num_periods
@@ -17,12 +20,126 @@ class Simulation:
         self.cancellation_rate = cancellation_rate
 
         #reserve venues are randomly selected from the total number of venues. 
-        #This represents the venues that the university will book for organizations if the organizations do not cancel their bookings
+        #This represents the venues that the university will book for organizations if the organizations have not booked a venue
         self.reserve_venues = random.sample(self.venues, max(1, num_venues // 5))
         for venue in self.reserve_venues:
             self.venues.remove(venue)
 
         self.score_history = {org.name: [] for org in self.organizations}  # Store scores for each organization
+
+    def generate_schedules(self):
+
+        for organization in self.organizations:
+            organization.schedule = set()
+
+            while len(organization.schedule) < organization.num_events:
+                slot = random.choice(self.time_slots)
+                is_compatible = True
+                for booked_slot in organization.schedule:
+                    if abs(booked_slot - slot) < 2:
+                        is_compatible = False
+                        break
+
+                if is_compatible:
+                    organization.schedule.add(slot)
+            print(f"Organization {organization.name} has a schedule of: {organization.schedule}")
+
+    def reset_venues(self):
+        print("Resetting venues for the current period")
+        for venue in self.venues + self.reserve_venues:
+            venue.reset_venue_bookings()
+    
+    def organization_bookings(self):
+        print("Organizations are booking venues")
+
+        # Sort organizations by reputation (highest first)
+        for org in sorted(self.organizations, key=lambda x: x.reputation, reverse=True):
+            # For each time slot in the organization's schedule
+            for time_slot in org.schedule:
+                available_venues = [v for v in self.venues if v.is_available(time_slot)]
+
+                if available_venues:
+                    # Delegate the booking logic to the organization
+                    org.book_venues(available_venues)
+                else:
+                    print(f"No available venues for {org.name} in time slot {time_slot}.")
+                
+
+    def university_cancellations(self):
+        print("University is cancelling bookings based on cancellation rate")
+        for venue in self.venues:
+            if any(venue.time_slots[slot] is not None for slot in venue.time_slots):
+                cancel_slot = random.choice([slot for slot, org in venue.time_slots.items() if org is not None])
+                venue.cancel_booking(cancel_slot)
+                print(f"University has cancelled booking for venue {venue.name} at time slot {cancel_slot}.")
+
+    #give the organizations that have not booked a venue a reserve venue so they can still host events
+    def allocate_reserve_venues(self):
+        print("Allocating reserve venues to organizations...")
+        for org in sorted(self.organizations, key=lambda x: x.reputation, reverse=True):
+            for time_slot in org.schedule:
+                booked = any(venue.time_slots.get(time_slot) == org for venue in self.venues + self.reserve_venues)
+                if not booked:
+                    for reserve_venue in self.reserve_venues:
+                        if reserve_venue.is_available(time_slot):
+                            reserve_venue.book(org, time_slot)
+                            print(f"{org.name} has been allocated reserve venue {reserve_venue.name} for time slot {time_slot}.")
+                            break
+
+    def score_organizations(self):
+        """Score the organizations based on their bookings, accounting for overbooked venues."""
+        print("Scoring organizations...")
+        
+        for org in self.organizations:
+            successful_bookings = 0
+            unused_bookings = 0
+
+            # Track the time slots booked by the organization to detect overbookings
+            booked_time_slots = {}
+
+            # Count successful and unused bookings
+            for venue in self.venues + self.reserve_venues:
+                for slot, booked_org in venue.time_slots.items():
+                    if booked_org == org:
+                        # Check if this time slot is already booked by the organization in another venue
+                        if slot not in booked_time_slots:
+                            booked_time_slots[slot] = 1  # Mark the first booking as successful
+                            successful_bookings += 1
+                        else:
+                            # If the organization has already booked a venue for this time slot, count it as overbooking
+                            booked_time_slots[slot] += 1
+                            unused_bookings += 1
+
+            # Apply penalties based on the unused bookings (overbooked venues)
+            penalty = unused_bookings * org.penalty_cost
+
+            # Update organization's score
+            org.score += successful_bookings - penalty
+            self.score_history[org.name].append(org.score)  # Store the score for analysis
+
+
+            # Output the current state of the organization
+            print(f"{org.name} has {successful_bookings} successful bookings and {unused_bookings} overbooked (unused) venues.")
+            print(f"Penalty applied: {penalty}, Updated score: {org.score}, Reputation: {org.reputation}")
+
+    def get_average_score(self):
+        return sum(org.score for org in self.organizations) / len(self.organizations)
+    
+
+    def update_reputations(self):
+        avg_score = self.get_average_score()
+        print(f"Average score is {avg_score}")
+        print("Updating reputations...")
+        for org in self.organizations:
+            org.update_reputation(avg_score)
+            print(f"Organization {org.name} has a reputation of {org.reputation}")
+
+
+    def update_strategies(self):
+        avg_score = self.get_average_score()
+        for org in self.organizations:
+            org.update_strategy(avg_score)
+            print(f"Organization {org.name} has a strategy of {org.strategy} after the round")
 
     def run(self):
         for period in range(self.num_periods):
@@ -32,12 +149,16 @@ class Simulation:
             print(f"\n==== Round {period + 1} ====")
             print("Organizations are either overbooking or booking regularly based on their strategy")
 
-            #reset the venues for the current period
+
+            self.generate_schedules()
+            time.sleep(2)
+
+
             self.reset_venues()
             time.sleep(2)  # Adjust the number of seconds as needed
 
             #process the bookings for the current period
-            self.organization_bookings(period)
+            self.organization_bookings()
             time.sleep(2)
 
             #cancel the bookings for the current period
@@ -45,95 +166,25 @@ class Simulation:
             time.sleep(2)
 
             #allocate reserve venues to organizations that have not booked a venue
-            self.allocate_reserve_venues(period)
+            self.allocate_reserve_venues()
             time.sleep(2)
 
             #score the organizations based on their bookings
-            self.score_organizations(period)
+            self.score_organizations()
             time.sleep(2)
 
             #update the reputations and strategies of the organizations
             self.update_reputations()
             time.sleep(2)
+
             self.update_strategies()
             time.sleep(2)
-
-    #TODO: create some sort of logic for organizations to book multiple venues if they are overbooking
-    #TODO: create some sort of logic for implementing penalities and considering budgets more intensely when booking venues
-    
-    def reset_venues(self):
-        print("Resetting venues for the current period")
-        for venue in self.venues:
-            venue.booked_by = None
-            venue.date = None
-    
-    def organization_bookings(self, date):
-        print("Organizations are booking venues")
-        booking_limit = 2  # Set a limit on the number of venues an organization can book per period
-        available_venues = [v for v in self.venues if v not in self.reserve_venues and v.booked_by is None]
-
-        # Initialize a dictionary to keep track of how many venues each organization has booked
-        bookings = {org: 0 for org in self.organizations}
-
-        while available_venues and any(bookings[org] < booking_limit for org in self.organizations):
-            for org in sorted(self.organizations, key=lambda x: x.reputation, reverse=True):
-                if bookings[org] < booking_limit and available_venues:
-                    venue = available_venues.pop(0)
-                    venue.booked_by = org
-                    venue.date = date
-                    bookings[org] += 1
-                    print(f"Organization {org.name} has booked venue {venue.name} on {venue.date}")
-
-    def university_cancellations(self):
-        print("University is cancelling bookings based on cancellation rate")
-        for venue in self.venues:
-            if venue.booked_by and random.random() < self.cancellation_rate:
-                venue.booked_by = None
-                venue.date = None
-                print(f"University has cancelled booking for venue {venue.name} on {venue.date}")
-
-    #give the organizations that have not booked a venue a reserve venue so they can still host events
-    def allocate_reserve_venues(self, date):
-        print("Allocating reserve venues to organizations...")
-        for org in sorted(self.organizations, key=lambda x: x.reputation, reverse=True):
-            if not any(v.booked_by == org for v in self.venues + self.reserve_venues):
-                for venue in self.reserve_venues:
-                    if venue.booked_by is None:
-                        venue.booked_by = org
-                        venue.date = date
-                        break
-
-    def score_organizations(self, date):
-        print("Scoring organizations...")
-        for org in self.organizations:
-            successful_bookings = sum(1 for v in self.venues if v.booked_by == org and v.date == date)
-            unused_bookings = sum(1 for v in self.venues if v.booked_by == org and v.date != date)
-            org.score += successful_bookings - unused_bookings * org.penalty_cost
-            self.score_history[org.name].append(org.score)  # Store the score for analysis
-            print(f"Organization {org.name} has a score of {org.score} and a reputation of {org.reputation}")
-
-    def update_reputations(self):
-        avg_score = sum(org.score for org in self.organizations) / len(self.organizations)
-        print(f"Average score is {avg_score}")
-        print("Updating reputations...")
-        for org in self.organizations:
-            reputation_change = org.score - avg_score
-            org.reputation = max(0, min(200, org.reputation + reputation_change))
-            print(f"Organization {org.name} has a reputation of {org.reputation}")
-
-
-    def update_strategies(self):
-        avg_score = sum(org.score for org in self.organizations) / len(self.organizations)
-        for org in self.organizations:
-            org.update_strategy(avg_score)
-            print(f"Organization {org.name} has a strategy of {org.strategy} after the round")
-
     
     def print_results(self):
         print("\nSimulation Results:")
         print("-------------------")
         for org in sorted(self.organizations, key=lambda x: x.score, reverse=True):
-            successful_bookings = sum(1 for v in self.venues + self.reserve_venues if v.booked_by == org)
+            successful_bookings = sum(1 for v in self.venues + self.reserve_venues if v == org)
             print(f"{org.name}:")
             print(f"  Strategy: {org.strategy}")
             print(f"  Score: {org.score:.2f}")
@@ -157,8 +208,3 @@ class Simulation:
         plt.ylabel("Score")
         plt.legend()
         plt.show()
-
-    #Upon currently running it, overbooking does drastically better than normal, but we are trying to 
-    #simulate it such that if they normally booked then it would be beneficial in the long run. 
-    #May have to do some sort of setup where there are multiple simulations where all orgs share and all orgs try to overbook
-    # to see how it goes. 
