@@ -14,7 +14,11 @@ def main():
     sim.run()
     sim.print_results()
 
+    sim.track_strategy_changes()
+    sim.calculate_gini_coefficient()
+
     sim.plot_results()
+    sim.compare_strategy_performance()
 
 if __name__ == "__main__":
     main()
