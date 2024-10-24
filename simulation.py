@@ -87,11 +87,14 @@ class Simulation:
                             break
 
     def score_organizations(self):
-        """Score the organizations based on their bookings, accounting for overbooked venues."""
+        """
+        Score the organizations based on their bookings using the new payoff function:
+        Payoff = sum of venue popularity levels from successful bookings - beta * overbooked venues
+        """
         print("Scoring organizations...")
-        
+
         for org in self.organizations:
-            successful_bookings = 0
+            successful_bookings_value = 0
             unused_bookings = 0
 
             # Track the time slots booked by the organization to detect overbookings
@@ -103,24 +106,24 @@ class Simulation:
                     if booked_org == org:
                         # Check if this time slot is already booked by the organization in another venue
                         if slot not in booked_time_slots:
-                            booked_time_slots[slot] = 1  # Mark the first booking as successful
-                            successful_bookings += 1
+                            # First booking for the time slot is successful
+                            booked_time_slots[slot] = 1
+                            successful_bookings_value += venue.popularity_level  # Use the venue's popularity level as reward
                         else:
-                            # If the organization has already booked a venue for this time slot, count it as overbooking
-                            booked_time_slots[slot] += 1
+                            # Overbooked venues are marked as unused
                             unused_bookings += 1
 
-            # Apply penalties based on the unused bookings (overbooked venues)
-            penalty = unused_bookings * org.penalty_cost
+            # Calculate the final payoff
+            beta = org.penalty_cost  # Penalty for overbooked venues
+            payoff = successful_bookings_value - (beta * unused_bookings)
 
-            # Update organization's score
-            org.score += successful_bookings - penalty
-            self.score_history[org.name].append(org.score)  # Store the score for analysis
-
+            # Update organization's score and reputation based on the calculated payoff
+            org.score += payoff
+            self.score_history[org.name].append(org.score)
 
             # Output the current state of the organization
-            print(f"{org.name} has {successful_bookings} successful bookings and {unused_bookings} overbooked (unused) venues.")
-            print(f"Penalty applied: {penalty}, Updated score: {org.score}, Reputation: {org.reputation}")
+            print(f"{org.name}: Successful bookings = {successful_bookings_value} (sum of venue popularity levels), Overbooked = {unused_bookings}")
+            print(f"Payoff: {payoff}, Updated score: {org.score}, Reputation: {org.reputation}")
 
     def get_average_score(self):
         return sum(org.score for org in self.organizations) / len(self.organizations)
