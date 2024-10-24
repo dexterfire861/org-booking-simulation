@@ -26,6 +26,8 @@ class Simulation:
             self.venues.remove(venue)
 
         self.score_history = {org.name: [] for org in self.organizations}  # Store scores for each organization
+        self.strategy_history = {org.name: [] for org in self.organizations}  # Store strategies for each organization
+
 
     def generate_schedules(self):
 
@@ -142,6 +144,7 @@ class Simulation:
         avg_score = self.get_average_score()
         for org in self.organizations:
             org.update_strategy(avg_score)
+            self.strategy_history[org.name].append(org.strategy)  # Track strategy each round
             print(f"Organization {org.name} has a strategy of {org.strategy} after the round")
 
     def run(self):
@@ -203,11 +206,46 @@ class Simulation:
 
     def plot_results(self):
         print("\nPlotting Results...")
-        for org_name, scores in self.score_history.items():
-            plt.plot(range(1, self.num_periods + 1), scores, label=org_name)
 
-        plt.title("Organization Scores Over Rounds")
+        # Track the scores based on strategy
+        normal_scores = {org_name: [] for org_name in self.strategy_history if 'normal' in self.strategy_history[org_name]}
+        overbook_scores = {org_name: [] for org_name in self.strategy_history if 'overbook' in self.strategy_history[org_name]}
+
+        # Plot for each strategy separately
+        plt.figure(figsize=(12, 6))
+
+        # Plot for normal strategy
+        plt.subplot(1, 2, 1)
+        for org_name in normal_scores:
+            plt.plot(range(1, self.num_periods + 1), self.score_history[org_name], label=org_name)
+        plt.title("Normal Booking Strategy Scores")
         plt.xlabel("Round")
         plt.ylabel("Score")
         plt.legend()
+
+        # Plot for overbooking strategy
+        plt.subplot(1, 2, 2)
+        for org_name in overbook_scores:
+            plt.plot(range(1, self.num_periods + 1), self.score_history[org_name], label=org_name)
+        plt.title("Overbooking Strategy Scores")
+        plt.xlabel("Round")
+        plt.ylabel("Score")
+        plt.legend()
+
+        plt.tight_layout()
+        plt.show()
+    
+    def compare_strategy_performance(self):
+        normal_scores = [self.score_history[org_name][-1] for org_name in self.strategy_history if 'normal' in self.strategy_history[org_name]]
+        overbook_scores = [self.score_history[org_name][-1] for org_name in self.strategy_history if 'overbook' in self.strategy_history[org_name]]
+
+        avg_normal_score = sum(normal_scores) / len(normal_scores) if normal_scores else 0
+        avg_overbook_score = sum(overbook_scores) / len(overbook_scores) if overbook_scores else 0
+
+        print(f"Average score for normal booking: {avg_normal_score:.2f}")
+        print(f"Average score for overbooking: {avg_overbook_score:.2f}")
+
+        plt.bar(['Normal Booking', 'Overbooking'], [avg_normal_score, avg_overbook_score])
+        plt.title("Comparison of Average Scores by Strategy")
+        plt.ylabel("Average Score")
         plt.show()

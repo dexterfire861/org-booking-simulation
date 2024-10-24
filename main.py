@@ -15,6 +15,7 @@ def main():
     sim.print_results()
 
     sim.plot_results()
+    sim.compare_strategy_performance()
 
 if __name__ == "__main__":
     main()
