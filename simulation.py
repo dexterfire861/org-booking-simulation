@@ -3,6 +3,7 @@ from venue import Venue
 import random
 import time
 import matplotlib.pyplot as plt
+import numpy as np
 
 class Simulation:
     def __init__(self, num_orgs, num_venues, num_periods, cancellation_rate):
@@ -248,3 +249,25 @@ class Simulation:
         plt.title("Comparison of Average Scores by Strategy")
         plt.ylabel("Average Score")
         plt.show()
+
+    def track_strategy_changes(self):
+        strategy_changes = {org.name: 0 for org in self.organizations}
+
+        for org in self.organizations:
+            for i in range(1, len(self.strategy_history[org.name])):
+                if self.strategy_history[org.name][i] != self.strategy_history[org.name][i - 1]:
+                    strategy_changes[org.name] += 1
+
+        print("Strategy changes over time:")
+        for org_name, changes in strategy_changes.items():
+            print(f"{org_name}: {changes} changes")
+
+    
+
+    def calculate_gini_coefficient(self):
+        scores = [org.score for org in self.organizations]
+        scores = np.array(sorted(scores))
+        n = len(scores)
+        index = np.arange(1, n + 1)
+        gini = (2 * np.sum(index * scores) / np.sum(scores)) - (n + 1) / n
+        print(f"Gini Coefficient (score inequality): {gini:.2f}")
