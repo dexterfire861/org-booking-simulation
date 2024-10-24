@@ -5,7 +5,7 @@ def main():
     parser = argparse.ArgumentParser(description="Run the organization booking simulation.")
     parser.add_argument('--num_orgs', type=int, default=10, help='Number of organizations')
     parser.add_argument('--num_venues', type=int, default=20, help='Number of venues')
-    parser.add_argument('--num_periods', type=int, default=10, help='Number of periods')
+    parser.add_argument('--num_periods', type=int, default=5, help='Number of periods')
     parser.add_argument('--cancellation_rate', type=float, default=0.3, help='Cancellation rate')
 
     args = parser.parse_args()
