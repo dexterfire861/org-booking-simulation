@@ -196,7 +196,6 @@ class Simulation:
             print(f"  Score: {org.score:.2f}")
             print(f"  Reputation: {org.reputation:.2f}")
             print(f"  Successful Bookings: {successful_bookings}")
-        
         print("\nStrategy Performance:")
         strategies = set(org.strategy for org in self.organizations)
         for strategy in strategies:
