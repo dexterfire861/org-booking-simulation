@@ -26,67 +26,81 @@ class Organization:
         if self.strategy == "overbook" and self.budget > 10:
             # If overbooking, the organization books more venues for the same time slots as backups
             while number_of_needed_venues > 0:
-                # Pick a random venue that has available slots
-                venue = random.choice([venue for venue in venues if venue.get_available_time_slots() != []])
-                available_time_slots = venue.get_available_time_slots()
+                # Get a list of venues with available time slots
+                available_venues = [venue for venue in venues if venue.get_available_time_slots()]
+                if not available_venues:
+                    print("No available venues left to book.")
+                    break
 
-                # Ensure that the time slot does not conflict with the organization's existing schedule
-                compatible_time_slots = [time_slot for time_slot in available_time_slots if time_slot in [s for s in self.schedule]]
+                for venue in available_venues:
+                    compatible_time_slots = [slot for slot in venue.get_available_time_slots() if slot in self.schedule]
 
-                if compatible_time_slots:
-                    time_slot = random.choice(compatible_time_slots)
-                    cost = venue.popularity_level * 5  # Overbooking costs more
-                    if self.budget >= cost:
-                        self.budget -= cost
-                        venues_to_book.append((venue, time_slot))
-                        number_of_needed_venues -= 1
+                    if compatible_time_slots:
+                        time_slot = random.choice(compatible_time_slots)
+                        cost = venue.popularity_level * 5  # Overbooking costs more
+                        if self.budget >= cost:
+                            self.budget -= cost
+                            venues_to_book.append((venue, time_slot))
+                            number_of_needed_venues -= 1
 
-                        # Overbook by booking additional venues for the same time slot
-                        additional_venue = random.choice([v for v in venues if v.get_available_time_slots() != [] and v != venue])
-                        additional_time_slot = time_slot  # Overbook for the same time slot
-                        additional_cost = additional_venue.popularity_level * 5
-                        if self.budget >= additional_cost:
-                            self.budget -= additional_cost
-                            venues_to_book.append((additional_venue, additional_time_slot))
+                            # Overbook by booking additional venues for the same time slot
+                            additional_venues = [v for v in available_venues if v != venue and time_slot in v.get_available_time_slots()]
+                            if additional_venues:
+                                additional_venue = random.choice(additional_venues)
+                                additional_cost = additional_venue.popularity_level * 5
+                                if self.budget >= additional_cost:
+                                    self.budget -= additional_cost
+                                    venues_to_book.append((additional_venue, time_slot))
+                                else:
+                                    print("Not enough budget to overbook additional venue.")
+                            else:
+                                print("No additional venues available for overbooking.")
+                            break  # Move on after successful booking
                         else:
-                            print("Organization does not have enough budget to overbook additional venue.")
-                        number_of_needed_venues -= 1
+                            print("Not enough budget to book venue.")
+                            continue
                     else:
-                        print("Organization does not have enough budget to book venue.")
-                        break
+                        continue  # Try the next venue
                 else:
-                    print("No compatible time slots available for overbooking.")
-                    continue
+                    print("No compatible time slots available in any venues.")
+                    break
 
         elif self.strategy == "normal" and self.budget > 10:
             # Normal booking: Book only the required number of venues with no overbooking
             while number_of_needed_venues > 0:
-                venue = random.choice([venue for venue in venues if venue.get_available_time_slots() != []])
-                available_time_slots = venue.get_available_time_slots()
+                available_venues = [venue for venue in venues if venue.get_available_time_slots()]
+                if not available_venues:
+                    print("No available venues left to book.")
+                    break
 
-                # Ensure that the time slot does not conflict with the organization's existing schedule
-                compatible_time_slots = [time_slot for time_slot in available_time_slots if time_slot in [s for s in self.schedule]]
+                for venue in available_venues:
+                    compatible_time_slots = [slot for slot in venue.get_available_time_slots() if slot in self.schedule]
 
-                if compatible_time_slots:
-                    time_slot = random.choice(compatible_time_slots)
-                    cost = venue.popularity_level * 5  # Normal booking cost
-                    if self.budget >= cost:
-                        self.budget -= cost
-                        venues_to_book.append((venue, time_slot))
-                        number_of_needed_venues -= 1
+                    if compatible_time_slots:
+                        time_slot = random.choice(compatible_time_slots)
+                        cost = venue.popularity_level * 5  # Normal booking cost
+                        if self.budget >= cost:
+                            self.budget -= cost
+                            venues_to_book.append((venue, time_slot))
+                            number_of_needed_venues -= 1
+                            break  # Move on after successful booking
+                        else:
+                            print("Not enough budget to book venue.")
+                            continue
                     else:
-                        print("Organization does not have enough budget to book venue.")
-                        break
+                        continue  # Try the next venue
                 else:
-                    print("No compatible time slots available for normal booking.")
-                    continue
+                    print("No compatible time slots available in any venues.")
+                    break
 
+        # Perform the bookings
         for venue, slot in venues_to_book:
-            venue.book(self,slot)
-            print(f"{self.name} has booked {venue.name} for time slot {slot}.")
+            if venue.book(self, slot):
+                print(f"{self.name} has booked {venue.name} for time slot {slot}.")
+            else:
+                print(f"Failed to book {venue.name} for time slot {slot}.")
+
         return venues_to_book
-
-
 
     def update_strategy(self, avg_score):
         if self.budget < 10:
