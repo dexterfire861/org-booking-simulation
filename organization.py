@@ -18,117 +18,104 @@ class Organization:
         self.budget = 200
         #schedule of organization
         self.schedule = schedule
+        self.round_scores = []
+        self.total_successful_bookings = 0
+        self.total_unused_bookings = 0
 
-    def book_venues(self, venues):
-        venues_to_book = []
-        number_of_needed_venues = self.num_events
+        self.current_round_score = 0
 
-        if self.strategy == "overbook" and self.budget > 10:
-            # If overbooking, the organization books more venues for the same time slots as backups
-            while number_of_needed_venues > 0:
-                # Pick a random venue that has available slots
-                venue = random.choice([venue for venue in venues if venue.get_available_time_slots() != []])
-                available_time_slots = venue.get_available_time_slots()
+    def book_venues(self, venues, enable_mechanism=False):
+        if self.budget <= 5:
+            print(f"{self.name} has insufficient budget to book any venue.")
+            return False
 
-                # Ensure that the time slot does not conflict with the organization's existing schedule
-                compatible_time_slots = [time_slot for time_slot in available_time_slots if time_slot in [s for s in self.schedule]]
+        for time_slot in self.schedule:
+            # Filter venues with the desired time slot available
+            available_venues = [venue for venue in venues if venue.is_available(time_slot, enable_mechanism)]
+            if not available_venues:
+                print(f"{self.name} could not find any available venues for time slot {time_slot}.")
+                continue
 
-                if compatible_time_slots:
-                    time_slot = random.choice(compatible_time_slots)
-                    cost = venue.popularity_level * 5  # Overbooking costs more
-                    if self.budget >= cost:
-                        self.budget -= cost
-                        venues_to_book.append((venue, time_slot))
-                        number_of_needed_venues -= 1
+            venue = random.choice(available_venues)
+            cost = venue.popularity_level * 5
 
-                        # Overbook by booking additional venues for the same time slot
-                        additional_venue = random.choice([v for v in venues if v.get_available_time_slots() != [] and v != venue])
-                        additional_time_slot = time_slot  # Overbook for the same time slot
-                        additional_cost = additional_venue.popularity_level * 5
-                        if self.budget >= additional_cost:
-                            self.budget -= additional_cost
-                            venues_to_book.append((additional_venue, additional_time_slot))
-                        else:
-                            print("Organization does not have enough budget to overbook additional venue.")
-                        number_of_needed_venues -= 1
-                    else:
-                        print("Organization does not have enough budget to book venue.")
-                        break
-                else:
-                    print("No compatible time slots available for overbooking.")
-                    continue
+            if self.budget >= cost:
+                self.budget -= cost
+                if venue.book(self, time_slot, enable_mechanism=enable_mechanism):
+                    print(f"{self.name} successfully booked {venue.name} at time slot {time_slot}.")
 
-        elif self.strategy == "normal" and self.budget > 10:
-            # Normal booking: Book only the required number of venues with no overbooking
-            while number_of_needed_venues > 0:
-                venue = random.choice([venue for venue in venues if venue.get_available_time_slots() != []])
-                available_time_slots = venue.get_available_time_slots()
+                    # If overbooking, attempt to book an additional venue for the same time slot
+                    if self.strategy == "overbook" and self.budget >= cost:
+                        additional_venues = [v for v in available_venues if v != venue]
+                        if additional_venues:
+                            additional_venue = random.choice(additional_venues)
+                            additional_cost = additional_venue.popularity_level * 5
+                            if self.budget >= additional_cost:
+                                self.budget -= additional_cost
+                                if additional_venue.book(self, time_slot, enable_mechanism=enable_mechanism):
+                                    print(f"{self.name} also overbooked {additional_venue.name} at time slot {time_slot}.")
+            else:
+                print(f"{self.name} does not have enough budget to book {venue.name}.")
+                continue
 
-                # Ensure that the time slot does not conflict with the organization's existing schedule
-                compatible_time_slots = [time_slot for time_slot in available_time_slots if time_slot in [s for s in self.schedule]]
+        return True
 
-                if compatible_time_slots:
-                    time_slot = random.choice(compatible_time_slots)
-                    cost = venue.popularity_level * 5  # Normal booking cost
-                    if self.budget >= cost:
-                        self.budget -= cost
-                        venues_to_book.append((venue, time_slot))
-                        number_of_needed_venues -= 1
-                    else:
-                        print("Organization does not have enough budget to book venue.")
-                        break
-                else:
-                    print("No compatible time slots available for normal booking.")
-                    continue
-
-        for venue, slot in venues_to_book:
-            venue.book(self,slot)
-            print(f"{self.name} has booked {venue.name} for time slot {slot}.")
-        return venues_to_book
-
-
-
-    def update_strategy(self, avg_score):
+    def update_strategy(self, avg_round_score):
         if self.budget < 10:
             self.strategy = "normal"
             print(f"{self.name} has switched to normal strategy due to low budget.")
-        elif self.reputation < 60 and self.score < avg_score:
-            # Low reputation and low score force normal booking
+        elif self.reputation < 60 and self.current_round_score < avg_round_score:
             self.strategy = "normal"
             print(f"{self.name} has switched to normal strategy due to low score and reputation.")
-        elif self.score > avg_score and self.reputation >= 60:
+        elif self.current_round_score > avg_round_score and self.reputation >= 60:
             self.strategy = "overbook"
             print(f"{self.name} has switched to overbook strategy due to high score and reputation.")
         else:
             self.strategy = random.choice(["overbook", "normal"])
             print(f"{self.name} has randomly switched strategies due to average performance.")
-        
         return True
 
+
+    def update_reputation(self, avg_round_score):
+        score_diff = self.current_round_score - avg_round_score
+        # Adjust reputation change rate as needed
+        reputation_change = score_diff * 0.5  # 0.5 is a scaling factor
+        max_change = 20  # Maximum reputation change per round
         
-    
-    def update_reputation(self, avg_score):
+        # Ensure the reputation change doesn't exceed the maximum allowed change
+        reputation_change = max(-max_change, min(max_change, reputation_change))
         
-        if self.score < avg_score:
-            self.reputation -= 20
-            print(f"{self.name} has lost reputation due to low score and high penalty.")
-        elif self.score > avg_score and self.reputation < 90:
-            self.reputation += 15
-            print(f"{self.name} has gained reputation due to high score.")
-        elif self.score > avg_score and self.penalty_cost <= 2:
-            self.reputation += 10
-            print(f"{self.name} has gained reputation due to low penalty and good performance.")
+        self.reputation += reputation_change
+        if reputation_change > 0:
+            print(f"{self.name} has gained {reputation_change:.2f} reputation due to high score.")
+        elif reputation_change < 0:
+            print(f"{self.name} has lost {abs(reputation_change):.2f} reputation due to low score.")
+        else:
+            print(f"{self.name}'s reputation remains the same.")
         
         self.reputation = max(0, min(200, self.reputation))
         return True
 
 
-    #Need to add a function that will update the penalty based on the number of venues booked and the score of the organization
+    def calculate_payoff(self, successful_bookings, unused_bookings):
+        # Constants for reward and penalty
+        REWARD_MULTIPLIER = 5  # Increased to boost rewards
+        PENALTY_PER_UNUSED = self.penalty_cost   # Reduced to lower penalties
+
+        # Total reward is based on the sum of venue popularity levels
+        total_reward = sum([venue.popularity_level * REWARD_MULTIPLIER for venue, _ in successful_bookings])
+
+        # Total penalty is based on unused bookings
+        total_penalty = unused_bookings * PENALTY_PER_UNUSED
+
+        # Calculate payoff and ensure it's non-negative
+        payoff = max(0, total_reward - total_penalty)
+
+        return payoff
+
 
     def update_penalty(self, unused_venues):
-        
-        self.penalty_cost += unused_venues*2
-
+        self.penalty_cost += unused_venues * 0.5
         self.penalty_cost = min(10, self.penalty_cost)
         print(f"{self.name} has a penalty cost of {self.penalty_cost} due to {unused_venues} unused venues.")
         return True

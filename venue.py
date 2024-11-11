@@ -2,39 +2,35 @@ class Venue:
     def __init__(self, name, popularity_level, time_slots):
         self.name = name
         self.popularity_level = popularity_level
-        self.time_slots = {slot: None for slot in (time_slots)}
-    
-    def is_available(self, slot):
-        if self.time_slots[slot] is None:
+        self.time_slots = {slot: [] for slot in time_slots}
+
+    def is_available(self, slot, enable_mechanism=False):
+        if enable_mechanism:
             return True
         else:
-            return False
-         
-    
-    def book(self, organization, slot):
-        if self.is_available(slot):
-            self.time_slots[slot] = organization
+            return not self.time_slots[slot]
+
+    def book(self, organization, slot, enable_mechanism=False):
+        if self.is_available(slot, enable_mechanism):
+            self.time_slots[slot].append(organization)
             return True
         else:
-            print("Venue is already booked for this time slot")
+            print(f"Venue {self.name} is already booked for time slot {slot}.")
             return False
 
     def cancel_booking(self, slot):
-        if slot in self.time_slots:
-            self.time_slots[slot] = None
+        if slot in self.time_slots and self.time_slots[slot]:
+            self.time_slots[slot] = []
             return True
         else:
-            print("Venue is not booked for this time slot")
+            print(f"Venue {self.name} is not booked for this time slot {slot}")
             return False
-    
-    def get_available_time_slots(self):
-        list_of_available_slots = []
-        for slot, org in self.time_slots.items():
-            if org is None:
-                list_of_available_slots.append(slot)
-            
-        
-        return list_of_available_slots
-    
+
+    def get_available_time_slots(self, enable_mechanism=False):
+        if enable_mechanism:
+            return list(self.time_slots.keys())
+        else:
+            return [slot for slot, bookings in self.time_slots.items() if not bookings]
+
     def reset_venue_bookings(self):
-        self.time_slots = {slot: None for slot in self.time_slots}
+        self.time_slots = {slot: [] for slot in self.time_slots}
