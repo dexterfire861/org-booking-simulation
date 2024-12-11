@@ -47,7 +47,7 @@ Used to measure fairness in score distribution:
 $$\text{Gini} = \frac{2 \sum_{i=1}^{n} i \cdot x_i}{n \cdot \sum_{i=1}^{n} x_i} - \frac{n+1}{n}$$
 
 
-Where $\( x_i \) are the sorted scores.
+Where $\x_i are the sorted scores.
 
 ---
 
