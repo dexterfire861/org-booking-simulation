@@ -38,14 +38,14 @@ This simulation models these challenges to analyze how strategies like overbooki
 ## Calculations and Metrics
 
 ### Payoff Function
-Payoff = \( \text{Total Rewards from Successful Bookings} - \text{Penalties for Unused Bookings} \)
+Payoff = Total Rewards from Successful Bookings - Penalties for Unused Bookings
 - **Reward:** Based on venue popularity levels.
 - **Penalty:** Scaled by unused bookings and penalty cost per round that increases with more unused bookings.
 
 ### Gini Coefficient
 Used to measure fairness in score distribution:
-\[ \text{Gini} = \frac{2 \sum_{i=1}^{n} i \cdot x_i}{n \cdot \sum_{i=1}^{n} x_i} - \frac{n+1}{n} \]
-Where \( x_i \) are the sorted scores.
+Gini = 2 \sum_{i=1}^{n} i \cdot x_i}{n \cdot \sum_{i=1}^{n} x_i} - \frac{n+1}{n} \]
+Where x_i are the sorted scores.
 
 ---
 
@@ -68,16 +68,17 @@ Key outcomes of the simulation:
 
 ### Steps
 1. Clone the repository:
-   '''bash
+   ```
    git clone <repository-link>
    cd <repository-folder>
+   
 
 2. Install dependencies
-    '''bash
+    ```
     pip install -r requirements.txt
 
 3. Run the simulation
-    '''bash
+    ```
     python main.py --num_orgs 10 --num_venues 20 --num_periods 10 --cancellation_rate 0.3 --venue-sharing
 
 
